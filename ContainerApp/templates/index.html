@@ -1,139 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🍽️ Resto Dudu Order</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resto Dudu Orders</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
       color: #fff;
-      margin: 0;
-      padding: 0;
+      min-height: 100vh;
     }
-    header {
-      background: #4b0082;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
-    main {
-      padding: 2rem;
-      max-width: 800px;
-      margin: auto;
-    }
-    form {
-      background: #2d2d5c;
-      padding: 1rem;
-      border-radius: 10px;
-      margin-bottom: 2rem;
-    }
-    input, button {
-      padding: 0.5rem;
-      margin: 0.5rem 0;
-      width: 100%;
-      border: none;
-      border-radius: 5px;
-    }
-    input {
+    .container {
+      margin-top: 50px;
       background: #fff;
-      color: #000;
+      color: #333;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
     }
-    button {
-      background: #6a5acd;
-      color: #fff;
-      cursor: pointer;
+    h1 {
+      color: #6a11cb;
       font-weight: bold;
     }
-    button:hover {
-      background: #836fff;
+    .btn-primary {
+      background: #6a11cb;
+      border: none;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #2d2d5c;
-      border-radius: 10px;
-      overflow: hidden;
+    .btn-primary:hover {
+      background: #2575fc;
     }
-    th, td {
-      padding: 0.8rem;
-      border-bottom: 1px solid #444;
-      text-align: left;
-    }
-    th {
-      background: #4b0082;
-    }
-    tr:hover {
-      background: #3e3e70;
+    table thead {
+      background: #6a11cb;
+      color: #fff;
     }
   </style>
 </head>
 <body>
-  <header>🍽️ Resto Dudu Order</header>
-  <main>
-    <h2>Add / Update Order</h2>
-    <form id="orderForm">
-      <input type="text" id="order_id" placeholder="Order ID" required>
-      <input type="text" id="name" placeholder="Customer Name" required>
-      <input type="text" id="item" placeholder="Item" required>
-      <button type="submit">Save Order</button>
+  <div class="container">
+    <h1 class="text-center mb-4">🍽️ Resto Dudu - Orders</h1>
+
+    <!-- Form Add Order -->
+    <form id="orderForm" class="row g-3 mb-4">
+      <div class="col-md-4">
+        <input type="text" class="form-control" id="customer_name" placeholder="Customer Name" required>
+      </div>
+      <div class="col-md-4">
+        <input type="text" class="form-control" id="food_item" placeholder="Food Item" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control" id="quantity" placeholder="Qty" required min="1">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Add</button>
+      </div>
     </form>
 
-    <h2>Order List</h2>
-    <table>
+    <!-- Orders Table -->
+    <table class="table table-striped align-middle">
       <thead>
         <tr>
           <th>Order ID</th>
-          <th>Name</th>
-          <th>Item</th>
+          <th>Customer</th>
+          <th>Food</th>
+          <th>Quantity</th>
           <th>Action</th>
         </tr>
       </thead>
-      <tbody id="orderTable"></tbody>
+      <tbody id="ordersTable"></tbody>
     </table>
-  </main>
+  </div>
 
   <script>
-    const API_URL = "/Order"; // ✅ relative path → otomatis ikut ALB domain
+    const API_BASE = "/orders";  // lewat Flask proxy ke API Gateway
 
-    // Load all orders
+    // Fetch orders
     async function loadOrders() {
-      try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
-        const table = document.getElementById("orderTable");
-        table.innerHTML = "";
-        data.forEach(o => {
-          table.innerHTML += `
-            <tr>
-              <td>${o.order_id || "-"}</td>
-              <td>${o.name || "-"}</td>
-              <td>${o.item || "-"}</td>
-              <td>
-                <button onclick="deleteOrder('${o.order_id}')">Delete</button>
-              </td>
-            </tr>
-          `;
-        });
-      } catch (err) {
-        console.error("Error loading orders:", err);
-      }
+      const res = await fetch(API_BASE);
+      const orders = await res.json();
+      const table = document.getElementById("ordersTable");
+      table.innerHTML = "";
+
+      orders.forEach(o => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${o.order_id}</td>
+          <td>${o.customer_name}</td>
+          <td>${o.food_item}</td>
+          <td>${o.quantity}</td>
+          <td>
+            <button class="btn btn-sm btn-warning me-2" onclick="editOrder('${o.order_id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteOrder('${o.order_id}')">Delete</button>
+          </td>
+        `;
+        table.appendChild(row);
+      });
     }
 
-    // Add or update order
+    // Add order
     document.getElementById("orderForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const order = {
-        order_id: document.getElementById("order_id").value,
-        name: document.getElementById("name").value,
-        item: document.getElementById("item").value
+      const newOrder = {
+        customer_name: document.getElementById("customer_name").value,
+        food_item: document.getElementById("food_item").value,
+        quantity: parseInt(document.getElementById("quantity").value)
       };
-      await fetch(API_URL, {
+      await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order)
+        body: JSON.stringify(newOrder)
       });
       e.target.reset();
       loadOrders();
@@ -141,11 +116,25 @@
 
     // Delete order
     async function deleteOrder(id) {
-      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
       loadOrders();
     }
 
-    // Init
+    // Edit order (simple prompt)
+    async function editOrder(id) {
+      const food = prompt("New food item:");
+      const qty = prompt("New quantity:");
+      if (food && qty) {
+        await fetch(`${API_BASE}/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ food_item: food, quantity: parseInt(qty) })
+        });
+        loadOrders();
+      }
+    }
+
+    // Initial load
     loadOrders();
   </script>
 </body>
